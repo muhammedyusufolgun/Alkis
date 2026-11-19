@@ -3,10 +3,13 @@ package tr.olgun.alkis;
 import android.app.*;
 import android.content.*;
 import android.media.*;
+import android.hardware.*;
 import android.os.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Listener extends Service {
+public class Listener extends Service implements SensorEventListener {
+    private SensorManager sensors;
+    private Pickup pickup;
     static final String QUIET="quiet", OFF="off";
     static volatile boolean active, ringing;
     static volatile String error="";
@@ -34,8 +37,8 @@ public class Listener extends Service {
     public int onStartCommand(Intent i,int flags,int id) {
         String action=i==null?null:i.getAction();
         if(OFF.equals(action)){stopSelf();return START_NOT_STICKY;}
-        if(QUIET.equals(action)){quiet();return START_NOT_STICKY;}
-        if(running.get()) return START_NOT_STICKY;
+        if(QUIET.equals(action)){quiet();if(!running.get())stopSelf();return running.get()?START_STICKY:START_NOT_STICKY;}
+        if(running.get()) return START_STICKY;
         getSystemService(NotificationManager.class).createNotificationChannel(
             new NotificationChannel("listen","Alkış dinleme",NotificationManager.IMPORTANCE_LOW));
         try {
@@ -50,7 +53,7 @@ public class Listener extends Service {
             error=""; active=true; running.set(true);
             new Thread(this::listen,"Alkis-Mic").start();
         } catch(RuntimeException e){error="Mikrofon açılamadı. Mikrofon iznini ve erişimini kontrol edin.";stopSelf();}
-        return START_NOT_STICKY;
+        return running.get()?START_STICKY:START_NOT_STICKY;
     }
     private void listen(){
         AudioRecord input=mic;
@@ -89,11 +92,23 @@ public class Listener extends Service {
             if(bell.write(sound,0,sound.length)!=sound.length || bell.setLoopPoints(0,sound.length,-1)!=AudioTrack.SUCCESS)
                 throw new IllegalStateException();
             ringing=true; bell.play();
+            sensors=getSystemService(SensorManager.class);
+            Sensor accel=sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            if(accel!=null){
+                pickup=new Pickup();
+                sensors.registerListener(this,accel,SensorManager.SENSOR_DELAY_GAME);
+            }
             getSystemService(NotificationManager.class).notify(1,note());
             main.postDelayed(silence,30000);
         }catch(RuntimeException e){quiet();error="Alarm sesi başlatılamadı.";stopSelf();}
     }
+    public void onSensorChanged(SensorEvent e){
+        if(ringing && pickup!=null && pickup.moved(e.timestamp,e.values[0],e.values[1],e.values[2])) quiet();
+    }
+    public void onAccuracyChanged(Sensor sensor,int accuracy){}
     private void quiet(){
+        if(sensors!=null)sensors.unregisterListener(this);
+        pickup=null;
         main.removeCallbacks(silence);
         if(bell!=null){bell.release();bell=null;}
         ringing=false;
