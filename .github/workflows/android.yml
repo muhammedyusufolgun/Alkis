@@ -21,7 +21,26 @@ jobs:
           javac -d build/test src/tr/olgun/alkis/Claps.java test/DetectorTest.java
           java -cp build/test tr.olgun.alkis.DetectorTest
       - run: bash build.sh
+      - name: Verify the signed release
+        run: |
+          for entry in AndroidManifest.xml resources.arsc res/drawable/signal.xml classes.dex; do
+            cmp <(unzip -p build/aligned.apk "$entry") <(unzip -p release/Alkisla-Bul.apk "$entry")
+          done
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose release/Alkisla-Bul.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Alkis-build
-          path: build/aligned.apk
+          name: Alkisla-Bul
+          path: release/Alkisla-Bul.apk
+      - name: Enable KVM
+        run: sudo chmod a+rw /dev/kvm
+      - name: Install and launch on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          script: |
+            adb install -r release/Alkisla-Bul.apk
+            adb shell am start -W -n tr.olgun.alkis/.Home | tee /tmp/launch.txt
+            grep -q 'Status: ok' /tmp/launch.txt
+            adb shell pidof tr.olgun.alkis
