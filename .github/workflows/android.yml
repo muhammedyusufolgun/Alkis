@@ -12,6 +12,11 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Check clap detection
+        run: |
+          mkdir -p build/test
+          javac -d build/test src/tr/olgun/alkis/Claps.java test/DetectorTest.java
+          java -cp build/test tr.olgun.alkis.DetectorTest
       - run: bash build.sh
       - uses: actions/upload-artifact@v4
         with:
