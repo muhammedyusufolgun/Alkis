@@ -12,6 +12,8 @@ import android.widget.*;
 
 public class Home extends Activity {
     private final int teal=0xff11686c, ink=0xff153639;
+    private boolean backgroundAfterStart;
+    private int lastSilenced;
     private TextView status;
     private Button toggle, silence;
     private final Handler ui=new Handler(Looper.getMainLooper());
@@ -29,6 +31,7 @@ public class Home extends Activity {
     }
     public void onCreate(Bundle state){
         super.onCreate(state);
+        if(state!=null) backgroundAfterStart=state.getBoolean("backgroundAfterStart");
         setVolumeControlStream(android.media.AudioManager.STREAM_ALARM);
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(0xfff2f7f5);
         scroll.setOnApplyWindowInsetsListener((v,insets)->{
@@ -57,7 +60,14 @@ public class Home extends Activity {
             getPreferences(0).edit().putBoolean("asked",true).apply();
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},2);return;
         }
-        startForegroundService(new Intent(this,Listener.class));
+        Listener.error="";
+        backgroundAfterStart=true;
+        try {
+            startForegroundService(new Intent(this,Listener.class));
+        } catch(RuntimeException ex){
+            backgroundAfterStart=false;
+            Listener.error="Dinleme başlatılamadı. Uygulamayı açık tutup tekrar deneyin.";
+        }
     }
     public void onRequestPermissionsResult(int code,String[] p,int[] r){
         super.onRequestPermissionsResult(code,p,r);
@@ -66,9 +76,28 @@ public class Home extends Activity {
         if(code==1||code==2) requestStart();
     }
     private void render(){
+        boolean silenced=lastSilenced!=Listener.alarmsSilenced;
+        lastSilenced=Listener.alarmsSilenced;
+        if((backgroundAfterStart || silenced) && Listener.active && !Listener.ringing){
+            backgroundAfterStart=false;
+            moveTaskToBack(true);
+        }
+        if(!Listener.error.isEmpty()) backgroundAfterStart=false;
         status.setText(Listener.ringing?"Alarm çalıyor":Listener.active?"Dinleme açık":Listener.error.isEmpty()?"Dinleme kapalı":Listener.error);
         toggle.setText(Listener.active?"Dinlemeyi kapat":"Dinlemeyi aç");
         silence.setVisibility(Listener.ringing?View.VISIBLE:View.GONE);
+    }
+    protected void onStart(){
+        super.onStart();
+        lastSilenced=Listener.alarmsSilenced;
+    }
+    protected void onStop(){
+        if(!isChangingConfigurations() && Listener.active) backgroundAfterStart=false;
+        super.onStop();
+    }
+    protected void onSaveInstanceState(Bundle state){
+        super.onSaveInstanceState(state);
+        state.putBoolean("backgroundAfterStart",backgroundAfterStart);
     }
     protected void onResume(){super.onResume();refresh.run();}
     protected void onPause(){ui.removeCallbacks(refresh);super.onPause();}

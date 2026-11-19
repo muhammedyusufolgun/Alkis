@@ -12,6 +12,7 @@ public class Listener extends Service implements SensorEventListener {
     private Pickup pickup;
     static final String QUIET="quiet", OFF="off";
     static volatile boolean active, ringing;
+    static int alarmsSilenced; // Written and observed on the main thread.
     static volatile String error="";
     private final Handler main=new Handler(Looper.getMainLooper());
     private final AtomicBoolean running=new AtomicBoolean();
@@ -111,6 +112,7 @@ public class Listener extends Service implements SensorEventListener {
         pickup=null;
         main.removeCallbacks(silence);
         if(bell!=null){bell.release();bell=null;}
+        if(ringing && active) alarmsSilenced++;
         ringing=false;
         if(active) getSystemService(NotificationManager.class).notify(1,note());
     }
