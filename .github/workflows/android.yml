@@ -20,6 +20,10 @@ jobs:
           mkdir -p build/test
           javac -d build/test src/tr/olgun/alkis/Claps.java test/DetectorTest.java
           java -cp build/test tr.olgun.alkis.DetectorTest
+      - name: Check pickup detection
+        run: |
+          javac -d build/test src/tr/olgun/alkis/Pickup.java test/PickupTest.java
+          java -cp build/test tr.olgun.alkis.PickupTest
       - run: bash build.sh
       - name: Verify the signed release
         run: |
@@ -44,3 +48,4 @@ jobs:
             adb shell am start -W -n tr.olgun.alkis/.Home | tee /tmp/launch.txt
             grep -q 'Status: ok' /tmp/launch.txt
             adb shell pidof tr.olgun.alkis
+            python3 test/background.py

@@ -36,14 +36,17 @@ public class Home extends Activity {
                 insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;});
         LinearLayout l=new LinearLayout(this);l.setOrientation(1);l.setGravity(Gravity.CENTER_VERTICAL);
         l.setPadding(dp(28),dp(24),dp(28),dp(24)); scroll.addView(l);setContentView(scroll);
-        ImageView icon=new ImageView(this);icon.setImageDrawable(getApplicationInfo().loadIcon(getPackageManager()));l.addView(icon,dp(64),dp(64));space(l,20);
-        TextView title=label("Alkışla Bul",36,ink);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);l.addView(title);
+        ImageView icon=new ImageView(this);icon.setImageDrawable(getApplicationInfo().loadIcon(getPackageManager()));LinearLayout.LayoutParams iconSize=new LinearLayout.LayoutParams(dp(64),dp(64));
+        iconSize.gravity=Gravity.CENTER_HORIZONTAL;
+        l.addView(icon,iconSize);space(l,20);
+        TextView title=label("Alkışla Bul",36,ink);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);title.setGravity(Gravity.CENTER);l.addView(title,-1,-2);
         space(l,8);l.addView(label("Dinlemeyi açın. Telefonun çalması için bir saniye içinde iki kez alkışlayın.",18,ink));
         space(l,26);status=label("",16,teal);l.addView(status);space(l,10);
         toggle=button(l,teal);toggle.setOnClickListener(v->{if(Listener.active)stopService(new Intent(this,Listener.class));else requestStart();});
         space(l,8);silence=button(l,0xff384c57);silence.setText("Alarmı sustur");silence.setOnClickListener(v->startService(new Intent(this,Listener.class).setAction(Listener.QUIET)));
-        space(l,16);l.addView(label("Ses cihazda işlenir. Zil, telefonun alarm ses düzeyini kullanır.",14,0xff4a6263));
-        space(l,24);l.addView(label("Muhammed Yusuf OLGUN",13,0xff526b6a));
+        space(l,16);l.addView(label("Dinleme, ekran kilitliyken de sürer. Alarmı susturmak için telefonu elinize alın.",14,0xff4a6263));
+        space(l,24);TextView author=label("Muhammed Yusuf OLGUN",13,0xff526b6a);
+        author.setGravity(Gravity.CENTER);l.addView(author,-1,-2);
     }
     private void requestStart(){
         if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
